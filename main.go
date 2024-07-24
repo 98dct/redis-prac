@@ -15,8 +15,9 @@ var client *redis.Client
 
 func init() {
 	client = redis.NewClient(&redis.Options{
-		Addr:     "localhost:16379",
-		Password: "",
+		//Addr:     "localhost:16379",
+		Addr:     "192.168.8.100:16379",
+		Password: "easy-chat",
 		DB:       0,
 		PoolSize: 20,
 	})
@@ -28,10 +29,22 @@ func init() {
 	fmt.Println("链接redis成功！")
 }
 
-// string 操作
+// string 操作  简单动态字符串类型
+// 底层是一个struct
+//
+//	struct sdshdr{
+//		//记录buf数组中已使用字节的数量
+//		//等于 SDS 保存字符串的长度
+//		int len;
+//		//记录 buf 数组中未使用字节的数量
+//		int free;
+//		//字节数组，用于保存字符串
+//		char buf[];
+//	}
 func test1() {
 	ctx := context.Background()
 	// 1. set aa bb             aa永不过期
+	// set key value [EX seconds] [PX milliseconds]
 	err1 := client.Set(ctx, "aa", "bb", 0).Err()
 	if err1 != nil {
 		fmt.Println("1: ", err1.Error())
@@ -137,6 +150,7 @@ func NewLock(name string, duration time.Duration) *Lock {
 func (l *Lock) GetLock(ctx context.Context) error {
 	backoff := 1
 	for {
+		// 基于 setnx 实现分布式锁
 		ok, err := client.SetNX(ctx, lockPrefix+l.name, l.traceId, l.Duration).Result() // 这个地方设置key成功还是失败err都是nil, 要根据result判断是否加锁成功
 		if err != nil {
 			return err
@@ -165,12 +179,70 @@ func (l *Lock) Unlock(ctx context.Context) {
 	script.Run(ctx, client, []string{lockPrefix + l.name}, l.traceId)
 }
 
-// 基于 setnx 实现分布式锁
+// 列表类型 list  列表只能存储字符串
 func test2() {
+
+	ctx := context.Background()
+	// 1.从左或者从右添加元素  lpush aa bb
+	err1 := client.LPush(ctx, "aa", "bb").Err()
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+
+	//  2.rpush aa cc
+	err2 := client.RPush(ctx, "aa", "cc").Err()
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+
+	// 3.lrange aa 0 -1
+	res1, err3 := client.LRange(ctx, "aa", 0, -1).Result()
+	if err3 != nil {
+		fmt.Println(err3)
+	}
+	for _, item := range res1 {
+		fmt.Println("3:", item)
+	}
+
+	// 4. linsert aa before cc dd
+	err4 := client.LInsertBefore(ctx, "aa", "cc", "dd").Err()
+	if err4 != nil {
+		fmt.Println(err4)
+	}
+
+	res2, err5 := client.LRange(ctx, "aa", 0, -1).Result()
+	if err5 != nil {
+		fmt.Println(err5)
+	}
+	for _, item := range res2 {
+		fmt.Println("4:", item)
+	}
+
+	// 5. lindex aa 0
+	res3, err6 := client.LIndex(ctx, "aa", 1).Result()
+	if err5 != nil {
+		fmt.Println(err6)
+	}
+	fmt.Println(res3)
+
+	// 6. 获取列表的长度 llen  aa
+	res4, err7 := client.LLen(ctx, "aa").Result()
+	if err7 != nil {
+		fmt.Println(err7)
+	}
+	fmt.Println(res4)
+
+	// 7.删除列表元素  lpop aa  rpop aa
+	res5, err8 := client.LPop(ctx, "aa").Result()
+	if err8 != nil {
+		fmt.Println(err8)
+	}
+	fmt.Println(res5)
 
 }
 
 func main() {
 	defer client.Close()
-	test1()
+	//test1()
+	test2()
 }
