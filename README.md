@@ -1,0 +1,1 @@
+go语言操作redis的string数据类型的示例
