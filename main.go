@@ -241,8 +241,225 @@ func test2() {
 
 }
 
+// 集合类型set 一种无序集合 元素不能重复  哈希表实现
+func test3() {
+
+	ctx := context.Background()
+	// 1.添加元素  sadd aa bb cc
+	err1 := client.SAdd(ctx, "aa", "bb", "cc", "dd").Err()
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+
+	err2 := client.SAdd(ctx, "aa", "cc").Err()
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+
+	bytes, err11 := json.Marshal(struct {
+		Name string
+	}{Name: "dct"})
+	if err11 != nil {
+		fmt.Println(err11)
+	}
+	fmt.Println(string(bytes))
+	err3 := client.SAdd(ctx, "aa", string(bytes)).Err()
+	if err3 != nil {
+		fmt.Println(err3)
+	}
+
+	// 2. 遍历所有值 smembers aa
+	res1, err4 := client.SMembers(ctx, "aa").Result()
+	if err4 != nil {
+		fmt.Println(err4)
+	}
+
+	for _, item := range res1 {
+		fmt.Println(item)
+	}
+
+	// 3.获取元素个数 scard aa
+	res2, err5 := client.SCard(ctx, "aa").Result()
+	if err5 != nil {
+		fmt.Println(err5)
+	}
+
+	fmt.Println("3.元素个数 ", res2)
+
+	// 4.随机获取元素 smembers aa 1
+	res3, err6 := client.SRandMember(ctx, "aa").Result()
+	if err6 != nil {
+		fmt.Println(err6)
+	}
+	fmt.Println(res3)
+
+	// 5.删除集合中的元素 srem aa bb        spop aa
+	err7 := client.SRem(ctx, "aa", "bb").Err()
+	if err7 != nil {
+		fmt.Println(err7)
+	}
+
+	err8 := client.SPop(ctx, "aa").Err()
+	if err8 != nil {
+		fmt.Println(err8)
+	}
+
+}
+
+// 有序集合类型 sortedset/zet 也是只能存储string, 元素不能重复
+// 每个元素会关联一个double类型的分数，根据这个分数从小到大排序，分数可以重复
+// 跳表：每个元素在跳表中存储了成员名和分值，调表使得范围查询和按分值排序的操作非常高效
+// 哈希表：快速查询特定成员的分值，键是成员名，值是分值
+func test4() {
+
+	ctx := context.Background()
+	// 1.添加元素 zadd key score value [score value ...]
+	err1 := client.ZAdd(ctx, "aa", &redis.Z{Score: 20, Member: "bb"}).Err()
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+
+	err2 := client.ZAdd(ctx, "aa", &redis.Z{Score: 30, Member: "cc"}, &redis.Z{Score: 10, Member: "dd"}).Err()
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+
+	// 2. 获取 zrange aa 0 -1 withscores
+	res1, err3 := client.ZRangeWithScores(ctx, "aa", 0, -1).Result()
+	if err3 != nil {
+		fmt.Println(err3)
+	}
+
+	for _, item := range res1 {
+		fmt.Print(item.Score)
+		fmt.Println(" " + item.Member.(string))
+	}
+
+	res2, err4 := client.ZRevRangeWithScores(ctx, "aa", 0, -1).Result()
+	if err4 != nil {
+		fmt.Println(err4)
+	}
+
+	for _, item := range res2 {
+		fmt.Print(item.Score)
+		fmt.Println(" " + item.Member.(string))
+	}
+
+	res3, err5 := client.ZRangeByScoreWithScores(ctx, "aa", &redis.ZRangeBy{
+		Min:    "15",
+		Max:    "25",
+		Offset: 0,
+		Count:  1,
+	}).Result()
+	if err5 != nil {
+		fmt.Println(err5)
+	}
+
+	for _, item := range res3 {
+		fmt.Print(item.Score)
+		fmt.Println(" " + item.Member.(string))
+	}
+
+	// 3.获取有序集合中的个数
+	res4, err6 := client.ZCard(ctx, "aa").Result()
+	if err6 != nil {
+		fmt.Println(err6)
+	}
+	fmt.Println(res4)
+
+	// 4.指定分数区间的成员数
+	res5, err7 := client.ZCount(ctx, "aa", "15", "30").Result()
+	if err7 != nil {
+		fmt.Println(err7)
+	}
+	fmt.Println(res5)
+
+	// 5.删除某个元素
+	err8 := client.ZRem(ctx, "aa", "cc").Err()
+	if err8 != nil {
+		fmt.Println(err8)
+	}
+
+}
+
+// 哈希类型 hash string类型的field和value的映射表
+func test5() {
+	ctx := context.Background()
+
+	// 1.添加元素 hset aa username dct
+	err1 := client.HSet(ctx, "aa", "username", "dct").Err()
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+
+	// 1.1 不存在时，添加成功，已经存在时，添加失败
+	err2 := client.HSetNX(ctx, "aa", "username", "dct111").Err()
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+
+	err3 := client.HSetNX(ctx, "aa", "code", "666").Err()
+	if err3 != nil {
+		fmt.Println(err3)
+	}
+
+	// 2.1 获取指定的field的value    hget aa field
+	res1, err4 := client.HGet(ctx, "aa", "username").Result()
+	if err4 != nil {
+		fmt.Println(err4)
+	}
+
+	fmt.Println(res1)
+
+	// 2.2 获取所有的field和value    hgetall  aa
+	res2, err5 := client.HGetAll(ctx, "aa").Result()
+	if err5 != nil {
+		fmt.Println(err5)
+	}
+
+	for k, v := range res2 {
+		fmt.Println(k + v)
+	}
+
+	// 3 获取hash的键值对数量
+	res3, err6 := client.HLen(ctx, "aa").Result()
+	if err6 != nil {
+		fmt.Println(err6)
+	}
+
+	fmt.Println(res3)
+
+	// 4 获取所有的key  获取所有的value
+	res4, err7 := client.HKeys(ctx, "aa").Result()
+	if err7 != nil {
+		fmt.Println(err7)
+	}
+
+	for _, item := range res4 {
+		fmt.Println(item)
+	}
+
+	res5, err8 := client.HVals(ctx, "aa").Result()
+	if err8 != nil {
+		fmt.Println(err8)
+	}
+
+	for _, item := range res5 {
+		fmt.Println(item)
+	}
+
+	// 5.删除一个或多个键值对
+	err9 := client.HDel(ctx, "aa", "code").Err()
+	if err9 != nil {
+		fmt.Println(err9)
+	}
+
+}
 func main() {
 	defer client.Close()
 	//test1()
-	test2()
+	//test2()
+	//test3()
+	//test4()
+	test5()
 }
