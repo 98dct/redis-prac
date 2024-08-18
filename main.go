@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"runtime"
 	"time"
+	"unsafe"
 )
 
 var client *redis.Client
@@ -51,7 +52,7 @@ func test1() {
 	}
 
 	// 2. setex cc 20 dd        cc30秒后过期
-	err2 := client.SetEX(ctx, "cc", "dd", 30*time.Second).Err()
+	err2 := client.SetEX(ctx, "cc", 113, 30*time.Second).Err()
 	if err2 != nil {
 		fmt.Println("2: ", err2.Error())
 	}
@@ -461,5 +462,38 @@ func main() {
 	//test2()
 	//test3()
 	//test4()
-	test5()
+	//test5()
+	//test11()
+	test12()
+}
+
+func test11() {
+
+	s1 := "字符串"
+	fmt.Println(len(s1))
+	for i := 0; i < len(s1); i++ {
+		fmt.Printf("%X ", s1[i])
+	}
+	fmt.Println()
+
+	s2 := "iszifuchuan"
+	fmt.Println(len(s2))
+	for i := 0; i < len(s2); i++ {
+		fmt.Printf("%X ", s2[i])
+		fmt.Printf("%c ", s2[i])
+	}
+
+	fmt.Println()
+	size1 := unsafe.Sizeof(s1)
+	fmt.Println(size1)
+	fmt.Println(len(s1))
+}
+
+func test12() {
+
+	s := "Go语言是一门简洁的编程语言"
+	for _, e := range s {
+		fmt.Println(string(e))
+	}
+
 }
