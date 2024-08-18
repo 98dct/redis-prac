@@ -63,7 +63,6 @@ func test1() {
 	fmt.Println(reflect.ValueOf(&user).Elem())
 	fmt.Println(reflect.ValueOf(&user1).Elem())
 	fmt.Println(reflect.ValueOf(&sli).Elem())
-	\
 }
 
 func main() {
